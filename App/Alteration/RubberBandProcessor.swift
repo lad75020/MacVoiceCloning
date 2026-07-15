@@ -5,9 +5,14 @@ import Foundation
 nonisolated enum RubberBandProcessor {
     enum ProcessorError: LocalizedError {
         case creationFailed
+        case emptyOutput
+        case nonFiniteOutput
+
         var errorDescription: String? {
             switch self {
             case .creationFailed: "The Rubber Band stretcher could not be created."
+            case .emptyOutput: "Voice alteration produced no audio. Try a different effect setting."
+            case .nonFiniteOutput: "Voice alteration produced invalid audio samples. Try a different effect setting."
             }
         }
     }
@@ -20,7 +25,10 @@ nonisolated enum RubberBandProcessor {
         sampleRate: Int,
         parameters: VoiceEffectParameters
     ) async throws -> [Float] {
+        try parameters.validate(sampleRate: sampleRate)
         guard !samples.isEmpty else { return samples }
+        try Task.checkCancellation()
+        guard !parameters.isIdentity else { return samples }
 
         var optionBits: UInt32 = RubberBandOptionProcessOffline.rawValue
             | RubberBandOptionPitchHighQuality.rawValue
@@ -37,8 +45,9 @@ nonisolated enum RubberBandProcessor {
         ) else { throw ProcessorError.creationFailed }
         defer { rubberband_delete(state) }
 
-        if parameters.engine == .r3Finer, parameters.formantScale != 1.0 {
-            rubberband_set_formant_scale(state, parameters.formantScale)
+        let applicableFormantScale = parameters.applicableFormantScale
+        if parameters.engine == .r3Finer, applicableFormantScale != 1.0 {
+            rubberband_set_formant_scale(state, applicableFormantScale)
         }
         rubberband_set_expected_input_duration(state, UInt32(samples.count))
         rubberband_set_max_process_size(state, UInt32(blockFrames))
@@ -55,10 +64,12 @@ nonisolated enum RubberBandProcessor {
 
         try forEachBlock(of: samples) { pointer, count, isFinal in
             rubberband_process(state, pointer, count, isFinal)
-            drain(state, into: &output, scratch: &scratch)
+            try drain(state, into: &output, scratch: &scratch)
         }
-        drain(state, into: &output, scratch: &scratch)
+        try drain(state, into: &output, scratch: &scratch)
 
+        guard !output.isEmpty else { throw ProcessorError.emptyOutput }
+        guard output.allSatisfy(\.isFinite) else { throw ProcessorError.nonFiniteOutput }
         return output
     }
 
@@ -83,8 +94,9 @@ nonisolated enum RubberBandProcessor {
         }
     }
 
-    private static func drain(_ state: RubberBandState?, into output: inout [Float], scratch: inout [Float]) {
+    private static func drain(_ state: RubberBandState?, into output: inout [Float], scratch: inout [Float]) throws {
         while true {
+            try Task.checkCancellation()
             let available = rubberband_available(state)
             guard available > 0 else { break }
             let take = min(Int(available), scratch.count)

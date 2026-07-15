@@ -22,6 +22,10 @@ nonisolated enum SessionFiles {
     static var synthesisWAV: URL { sessionDir.appending(path: "synthesis.wav") }
     static var alteredWAV: URL { sessionDir.appending(path: "altered.wav") }
 
+    static func alteredStagingURL(revision: UInt, id: UUID = UUID()) -> URL {
+        sessionDir.appending(path: "altered-\(revision)-\(id.uuidString)-staging.wav")
+    }
+
     static func prepareDirectories() throws {
         let fm = FileManager.default
         try fm.createDirectory(at: modelsRoot, withIntermediateDirectories: true)
@@ -33,6 +37,10 @@ nonisolated enum SessionFiles {
     }
 
     static func commitPreparedSynthesis(at staging: URL, to destination: URL = synthesisWAV) throws {
+        try commitPreparedFile(at: staging, to: destination)
+    }
+
+    static func commitPreparedAltered(at staging: URL, to destination: URL = alteredWAV) throws {
         try commitPreparedFile(at: staging, to: destination)
     }
 

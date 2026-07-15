@@ -59,14 +59,17 @@ final class PipelineState {
     var lastError: String?
 
     /// What export (stage 5) will save.
-    var exportClip: AudioClip? { altered ?? synthesis }
+    var exportClip: AudioClip? { effect.isIdentity ? synthesis : (altered ?? synthesis) }
 
     /// What the alter stage's preview button plays.
-    var previewClip: AudioClip? { bypassEffect ? synthesis : (altered ?? synthesis) }
+    var previewClip: AudioClip? {
+        bypassEffect ? synthesis : (effect.isIdentity ? synthesis : (altered ?? synthesis))
+    }
 
     private var transcriptionTask: Task<Void, Never>?
     private var alterationTask: Task<Void, Never>?
     private var synthesisRevision: UInt = 0
+    private var alterationRevision = AlterationRevisionGate()
 
     // MARK: - Reference
 
@@ -163,6 +166,7 @@ final class PipelineState {
                 samples: result.samples, sampleRate: result.sampleRate, url: SessionFiles.synthesisWAV)
             synthesisStats = result.stats
             altered = nil
+            _ = alterationRevision.advance()
             scheduleAlteration(debounced: false)
         } catch {
             lastError = error.localizedDescription
@@ -171,10 +175,12 @@ final class PipelineState {
 
     private func invalidateSynthesis() {
         synthesisRevision &+= 1
+        _ = alterationRevision.advance()
         alterationTask?.cancel()
         synthesis = nil
         synthesisStats = nil
         altered = nil
+        isAltering = false
         synthesisProgress = 0
     }
 
@@ -183,40 +189,73 @@ final class PipelineState {
     /// Re-runs Rubber Band over the synthesis with the current parameters,
     /// debounced so slider drags don't queue up work.
     func scheduleAlteration(debounced: Bool = true) {
+        let capturedRevision = alterationRevision.advance()
+        let capturedEffect = effect
+        guard let capturedSynthesis = synthesis else {
+            alterationTask?.cancel()
+            isAltering = false
+            return
+        }
+        lastError = nil
+        guard !capturedEffect.isIdentity else {
+            alterationTask?.cancel()
+            isAltering = false
+            return
+        }
         alterationTask?.cancel()
-        guard synthesis != nil else { return }
+        isAltering = true
         alterationTask = Task { [weak self] in
             if debounced {
                 try? await Task.sleep(for: .milliseconds(300))
             }
-            guard let self, !Task.isCancelled else { return }
-            await self.refreshAlteration()
+            guard let self, !Task.isCancelled else {
+                self?.finishAlterationIfCurrent(capturedRevision: capturedRevision)
+                return
+            }
+            await self.refreshAlteration(
+                synthesis: capturedSynthesis,
+                parameters: capturedEffect,
+                capturedRevision: capturedRevision)
         }
     }
 
-    private func refreshAlteration() async {
-        guard let synthesis else {
-            altered = nil
-            return
+    private func refreshAlteration(
+        synthesis: AudioClip,
+        parameters: VoiceEffectParameters,
+        capturedRevision: UInt
+    ) async {
+        let stagingURL = SessionFiles.alteredStagingURL(revision: capturedRevision)
+        defer {
+            try? FileManager.default.removeItem(at: stagingURL)
+            if alterationRevision.isCurrent(capturedRevision) {
+                isAltering = false
+            }
         }
-        guard !effect.isIdentity else {
-            altered = nil
-            return
-        }
-        isAltering = true
-        defer { isAltering = false }
         do {
             let processed = try await RubberBandProcessor.process(
-                samples: synthesis.samples, sampleRate: synthesis.sampleRate, parameters: effect)
+                samples: synthesis.samples, sampleRate: synthesis.sampleRate, parameters: parameters)
             try Task.checkCancellation()
+            guard alterationRevision.isCurrent(capturedRevision) else { return }
+            try SessionFiles.prepareDirectories()
             try await AudioConverting.writeWAV(
-                samples: processed, sampleRate: synthesis.sampleRate, to: SessionFiles.alteredWAV)
+                samples: processed, sampleRate: synthesis.sampleRate, to: stagingURL)
+            try Task.checkCancellation()
+            guard alterationRevision.isCurrent(capturedRevision) else { return }
+            try SessionFiles.commitPreparedAltered(at: stagingURL)
+            guard alterationRevision.isCurrent(capturedRevision) else { return }
             altered = AudioClip(
                 samples: processed, sampleRate: synthesis.sampleRate, url: SessionFiles.alteredWAV)
         } catch is CancellationError {
             // A newer parameter change superseded this run.
         } catch {
+            guard alterationRevision.isCurrent(capturedRevision) else { return }
             lastError = error.localizedDescription
+        }
+    }
+
+    private func finishAlterationIfCurrent(capturedRevision: UInt) {
+        if alterationRevision.isCurrent(capturedRevision) {
+            isAltering = false
         }
     }
 }

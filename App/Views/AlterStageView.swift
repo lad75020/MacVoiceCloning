@@ -10,22 +10,25 @@ struct AlterStageView: View {
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 10) {
                 GridRow {
                     Text("Pitch")
-                    Slider(value: $pipeline.effect.pitchSemitones, in: -12...12, step: 1)
+                    Slider(value: $pipeline.effect.pitchSemitones, in: VoiceEffectParameters.pitchRange, step: 1)
                     Text(String(format: "%+.0f st", pipeline.effect.pitchSemitones))
                         .monospacedDigit()
                         .frame(width: 52, alignment: .trailing)
                 }
                 GridRow {
                     Text("Speed")
-                    Slider(value: $pipeline.effect.speed, in: 0.5...2.0)
+                    Slider(value: $pipeline.effect.speed, in: VoiceEffectParameters.speedRange)
                     Text(String(format: "×%.2f", pipeline.effect.speed))
                         .monospacedDigit()
                         .frame(width: 52, alignment: .trailing)
                 }
                 GridRow {
                     Text("Timbre")
-                    Slider(value: $pipeline.effect.formantScale, in: 0.5...2.0)
+                    Slider(value: $pipeline.effect.formantScale, in: VoiceEffectParameters.formantScaleRange)
                         .disabled(pipeline.effect.engine == .r2Faster)
+                        .accessibilityHint(pipeline.effect.engine == .r2Faster
+                                           ? "Timbre requires the R3 engine."
+                                           : "")
                     Text(String(format: "×%.2f", pipeline.effect.formantScale))
                         .monospacedDigit()
                         .frame(width: 52, alignment: .trailing)
