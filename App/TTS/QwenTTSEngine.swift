@@ -31,9 +31,10 @@ actor QwenTTSEngine: TTSEngine {
 
     func synthesize(
         _ request: SynthesisRequest,
-        onProgress: @escaping @Sendable (Double) -> Void
+        onProgress: @escaping @Sendable (SynthesisProgress) -> Void
     ) async throws -> SynthesisResult {
         guard let model else { throw TTSEngineError.modelNotLoaded }
+        try request.validate()
 
         // Read via AudioConverting (not the package's loadAudioArray, whose single
         // read call can silently truncate the file on macOS 26).
@@ -64,15 +65,20 @@ actor QwenTTSEngine: TTSEngine {
                     // The Int argument is the token *value*; progress comes from counting.
                     tokenCount += 1
                     if tokenCount % 6 == 0 {
-                        onProgress(Double(tokenCount) / 12.0)
+                        onProgress(SynthesisProgress(generatedTokens: tokenCount))
                     }
                 }
             )
+            if tokenCount % 6 != 0 {
+                onProgress(SynthesisProgress(generatedTokens: tokenCount))
+            }
             let samples = audio.asArray(Float.self)
             let stats = SynthesisStats(
                 generatedTokens: tokenCount,
                 totalSeconds: Date().timeIntervalSince(started))
-            return SynthesisResult(samples: samples, sampleRate: model.sampleRate, stats: stats)
+            let result = SynthesisResult(samples: samples, sampleRate: model.sampleRate, stats: stats)
+            try result.validate()
+            return result
         } catch let error as TTSEngineError {
             throw error
         } catch {

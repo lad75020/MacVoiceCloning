@@ -60,8 +60,8 @@ struct TTSSmokeTests {
             language: .english,
             referenceAudioURL: reference,
             referenceText: referenceText)
-        let result = try await engine.synthesize(request) { seconds in
-            print("SMOKE generated: \(String(format: "%.1f", seconds)) s")
+        let result = try await engine.synthesize(request) { progress in
+            print("SMOKE generated: \(String(format: "%.1f", progress.estimatedAudioSeconds)) s")
         }
         await engine.unload()
 

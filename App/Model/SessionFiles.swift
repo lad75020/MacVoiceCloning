@@ -18,6 +18,7 @@ nonisolated enum SessionFiles {
     static var rawRecording: URL { sessionDir.appending(path: "recording-raw.caf") }
     static var referenceStaging: URL { sessionDir.appending(path: "reference-staging.wav") }
     static var reference24k: URL { sessionDir.appending(path: "reference-24k.wav") }
+    static var synthesisStaging: URL { sessionDir.appending(path: "synthesis-staging.wav") }
     static var synthesisWAV: URL { sessionDir.appending(path: "synthesis.wav") }
     static var alteredWAV: URL { sessionDir.appending(path: "altered.wav") }
 
@@ -28,6 +29,14 @@ nonisolated enum SessionFiles {
     }
 
     static func commitPreparedReference(at staging: URL, to destination: URL = reference24k) throws {
+        try commitPreparedFile(at: staging, to: destination)
+    }
+
+    static func commitPreparedSynthesis(at staging: URL, to destination: URL = synthesisWAV) throws {
+        try commitPreparedFile(at: staging, to: destination)
+    }
+
+    private static func commitPreparedFile(at staging: URL, to destination: URL) throws {
         let fm = FileManager.default
         if fm.fileExists(atPath: destination.path) {
             _ = try fm.replaceItemAt(destination, withItemAt: staging)

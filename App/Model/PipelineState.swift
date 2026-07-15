@@ -66,6 +66,7 @@ final class PipelineState {
 
     private var transcriptionTask: Task<Void, Never>?
     private var alterationTask: Task<Void, Never>?
+    private var synthesisRevision: UInt = 0
 
     // MARK: - Reference
 
@@ -125,24 +126,39 @@ final class PipelineState {
 
     func synthesize(with engine: any TTSEngine) async {
         guard let reference, hasSynthesisInputs, !isSynthesizing else { return }
-        let text = synthesisText
-        let language = self.language
+        let revision = synthesisRevision
+        let request = SynthesisRequest(
+            text: synthesisText,
+            language: language,
+            referenceAudioURL: reference.url,
+            referenceText: referenceTranscript.trimmingCharacters(in: .whitespacesAndNewlines))
         isSynthesizing = true
         synthesisProgress = 0
-        defer { isSynthesizing = false }
+        lastError = nil
+        defer {
+            try? FileManager.default.removeItem(at: SessionFiles.synthesisStaging)
+            isSynthesizing = false
+        }
         do {
-            let request = SynthesisRequest(
-                text: text,
-                language: language,
-                referenceAudioURL: reference.url,
-                referenceText: referenceTranscript)
-            let result = try await engine.synthesize(request) { seconds in
+            let result = try await engine.synthesize(request) { progress in
                 Task { @MainActor [weak self] in
-                    self?.synthesisProgress = seconds
+                    guard let self,
+                          self.synthesisRevision == revision,
+                          self.isSynthesizing
+                    else { return }
+                    self.synthesisProgress = max(
+                        self.synthesisProgress, progress.estimatedAudioSeconds)
                 }
             }
+            guard synthesisRevision == revision else { return }
+            try result.validate()
+            try SessionFiles.prepareDirectories()
             try await AudioConverting.writeWAV(
-                samples: result.samples, sampleRate: result.sampleRate, to: SessionFiles.synthesisWAV)
+                samples: result.samples,
+                sampleRate: result.sampleRate,
+                to: SessionFiles.synthesisStaging)
+            guard synthesisRevision == revision else { return }
+            try SessionFiles.commitPreparedSynthesis(at: SessionFiles.synthesisStaging)
             synthesis = AudioClip(
                 samples: result.samples, sampleRate: result.sampleRate, url: SessionFiles.synthesisWAV)
             synthesisStats = result.stats
@@ -154,6 +170,7 @@ final class PipelineState {
     }
 
     private func invalidateSynthesis() {
+        synthesisRevision &+= 1
         alterationTask?.cancel()
         synthesis = nil
         synthesisStats = nil

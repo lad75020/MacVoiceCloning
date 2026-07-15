@@ -1,7 +1,7 @@
 analyzed_at: "2026-07-15T15:11:42Z"
 project_root: "/Volumes/WDBlack4TB/Code/MacVoiceCloning"
 total_features: 8
-completed: 4
+completed: 5
 features:
   - id: "application-shell-and-session"
     name: "Application Shell and Session"
@@ -64,17 +64,19 @@ features:
     name: "Voice Clone Synthesis"
     description: "Generates speech locally with Qwen3-TTS and MLX from the reference voice, transcript, language, and target text while reporting progress and speed."
     files:
-      - "App/TTS/TTSEngine.swift"
       - "App/TTS/QwenTTSEngine.swift"
+      - "App/TTS/TTSEngine.swift"
       - "App/Views/SynthesizeStageView.swift"
       - "App/Model/PipelineState.swift"
+      - "App/Model/SessionFiles.swift"
+      - "Tests/SynthesisContractsTests.swift"
       - "Tests/TTSSmokeTests.swift"
-    status: pending
-    current_phase: null
-    branch: null
-    pushed: null
-    started_at: null
-    completed_at: null
+    status: completed
+    current_phase: completed
+    branch: "feature/time-machine-voice-clone-synthesis"
+    pushed: false
+    started_at: "2026-07-15T17:02:17Z"
+    completed_at: "2026-07-15T17:21:19Z"
   - id: "audio-preview-playback"
     name: "Audio Preview Playback"
     description: "Provides mutually exclusive playback controls with progress for reference, synthesized, and altered audio throughout the workflow."
