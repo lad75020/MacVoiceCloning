@@ -78,5 +78,27 @@ struct TTSSmokeTests {
             print("SMOKE stats: \(stats.generatedTokens) tokens in \(String(format: "%.1f", stats.totalSeconds)) s (\(String(format: "%.1f", stats.tokensPerSecond)) tok/s)")
         }
         print("SMOKE OUTPUT: \(out.path)")
+
+        // 6. Drive the rest of the pipeline exactly as the UI does:
+        //    Rubber Band alteration, then M4A export.
+        var effect = VoiceEffectParameters()
+        effect.pitchSemitones = 7
+        effect.speed = 1.15
+        effect.preserveFormants = false
+        let altered = try await RubberBandProcessor.process(
+            samples: result.samples, sampleRate: result.sampleRate, parameters: effect)
+        let expectedLength = Double(result.samples.count) * effect.timeRatio
+        #expect(abs(Double(altered.count) - expectedLength) / expectedLength < 0.1)
+        #expect(altered.allSatisfy { $0.isFinite })
+
+        let m4a = dir.appending(path: "smoke-out.m4a")
+        try await AudioConverting.writeM4A(samples: altered, sampleRate: result.sampleRate, to: m4a)
+        let attributes = try FileManager.default.attributesOfItem(atPath: m4a.path)
+        #expect((attributes[.size] as? Int ?? 0) > 10_000, "M4A export should not be empty")
+        let (roundTrip, roundTripRate) = try await AudioConverting.readMonoFloat(url: m4a)
+        #expect(roundTripRate == result.sampleRate)
+        #expect(abs(Double(roundTrip.count) - Double(altered.count)) < Double(result.sampleRate),
+                "M4A round-trip duration should be within 1 s (AAC priming)")
+        print("SMOKE ALTERED M4A: \(m4a.path)")
     }
 }

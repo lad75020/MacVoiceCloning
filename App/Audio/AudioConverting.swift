@@ -153,15 +153,17 @@ nonisolated enum AudioConverting {
         try write(samples: samples, sampleRate: sampleRate, to: file)
     }
 
-    /// Writes mono Float32 samples as an AAC .m4a file.
+    /// Writes mono Float32 samples as an AAC .m4a file. The encoder picks the
+    /// bitrate for the sample rate/channel count (an explicit bitrate that doesn't
+    /// suit 24 kHz mono makes AudioConverter reject the settings).
     @concurrent
-    static func writeM4A(samples: [Float], sampleRate: Int, to url: URL, bitRate: Int = 128_000) async throws {
+    static func writeM4A(samples: [Float], sampleRate: Int, to url: URL) async throws {
         try? FileManager.default.removeItem(at: url)
         let file = try AVAudioFile(forWriting: url, settings: [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
             AVSampleRateKey: sampleRate,
             AVNumberOfChannelsKey: 1,
-            AVEncoderBitRateKey: bitRate,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
         ], commonFormat: .pcmFormatFloat32, interleaved: false)
         try write(samples: samples, sampleRate: sampleRate, to: file)
     }

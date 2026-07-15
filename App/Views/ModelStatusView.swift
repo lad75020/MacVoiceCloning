@@ -24,6 +24,11 @@ struct ModelStatusView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(nsColor: .controlBackgroundColor))
         )
+        .contextMenu {
+            Button("Reveal Model Folder in Finder") {
+                model.modelManager.revealModelFolder()
+            }
+        }
     }
 
     private var indicatorColor: Color {
