@@ -20,6 +20,7 @@ struct RecordStageView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(model.recorder.state == .recording ? .red : .accentColor)
+                .disabled(model.pipeline.isPreparingReference)
 
                 LevelMeterView(level: model.recorder.level)
                     .frame(width: 120)
@@ -29,7 +30,7 @@ struct RecordStageView: View {
                 Spacer()
 
                 Button("Import…") { showImporter = true }
-                    .disabled(model.recorder.state == .recording)
+                    .disabled(model.recorder.state == .recording || model.pipeline.isPreparingReference)
             }
 
             Text("Speak clearly for 5–15 seconds. At least 3 seconds are required.")
@@ -51,8 +52,11 @@ struct RecordStageView: View {
             }
         }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.audio]) { result in
-            if case .success(let url) = result {
+            switch result {
+            case .success(let url):
                 Task { await importReference(url) }
+            case .failure(let error):
+                model.pipeline.lastError = error.localizedDescription
             }
         }
         .alert("Microphone access needed", isPresented: $permissionDenied) {
@@ -86,6 +90,7 @@ struct RecordStageView: View {
     }
 
     private func toggleRecording() async {
+        guard !model.pipeline.isPreparingReference else { return }
         if model.recorder.state == .recording {
             do {
                 if let recording = try model.recorder.stop() {

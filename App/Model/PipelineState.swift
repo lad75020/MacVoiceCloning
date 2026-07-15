@@ -58,24 +58,27 @@ final class PipelineState {
     /// Converts a raw recording or imported file into the 24 kHz mono reference
     /// and kicks off transcription.
     func setReference(fromRaw rawURL: URL) async {
+        guard !isPreparingReference else { return }
         isPreparingReference = true
-        defer { isPreparingReference = false }
+        defer {
+            try? FileManager.default.removeItem(at: SessionFiles.referenceStaging)
+            isPreparingReference = false
+        }
         do {
             try SessionFiles.prepareDirectories()
             let duration = try await AudioConverting.convertToMono24kWAV(
-                input: rawURL, output: SessionFiles.reference24k)
+                input: rawURL, output: SessionFiles.referenceStaging)
             guard duration >= AudioRecorder.minimumDuration else {
-                reference = nil
                 lastError = String(
                     format: "The sample lasts %.1f s — Qwen3-TTS needs at least %.0f s (5–15 s of clear speech works best).",
                     duration, AudioRecorder.minimumDuration)
                 return
             }
+            try SessionFiles.commitPreparedReference(at: SessionFiles.referenceStaging)
             reference = ReferenceSample(url: SessionFiles.reference24k, duration: duration)
             invalidateSynthesis()
             transcribeReference()
         } catch {
-            reference = nil
             lastError = error.localizedDescription
         }
     }

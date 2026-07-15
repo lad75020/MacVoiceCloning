@@ -1,7 +1,7 @@
 analyzed_at: "2026-07-15T15:11:42Z"
 project_root: "/Volumes/WDBlack4TB/Code/MacVoiceCloning"
 total_features: 8
-completed: 2
+completed: 3
 features:
   - id: "application-shell-and-session"
     name: "Application Shell and Session"
@@ -42,12 +42,12 @@ features:
       - "App/Transcription/ReferenceTranscriber.swift"
       - "App/Views/RecordStageView.swift"
       - "App/Views/Components/LevelMeterView.swift"
-    status: pending
+    status: completed
     current_phase: null
-    branch: null
-    pushed: null
-    started_at: null
-    completed_at: null
+    branch: "feature/time-machine-reference-voice-capture"
+    pushed: false
+    started_at: "2026-07-15T16:16:53Z"
+    completed_at: "2026-07-15T16:36:50Z"
   - id: "multilingual-text-input"
     name: "Multilingual Text Input"
     description: "Lets users enter the speech their clone should say and select or auto-detect one of the supported synthesis languages."

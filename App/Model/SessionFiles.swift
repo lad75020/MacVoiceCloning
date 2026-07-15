@@ -16,6 +16,7 @@ nonisolated enum SessionFiles {
     }
 
     static var rawRecording: URL { sessionDir.appending(path: "recording-raw.caf") }
+    static var referenceStaging: URL { sessionDir.appending(path: "reference-staging.wav") }
     static var reference24k: URL { sessionDir.appending(path: "reference-24k.wav") }
     static var synthesisWAV: URL { sessionDir.appending(path: "synthesis.wav") }
     static var alteredWAV: URL { sessionDir.appending(path: "altered.wav") }
@@ -24,5 +25,14 @@ nonisolated enum SessionFiles {
         let fm = FileManager.default
         try fm.createDirectory(at: modelsRoot, withIntermediateDirectories: true)
         try fm.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+    }
+
+    static func commitPreparedReference(at staging: URL, to destination: URL = reference24k) throws {
+        let fm = FileManager.default
+        if fm.fileExists(atPath: destination.path) {
+            _ = try fm.replaceItemAt(destination, withItemAt: staging)
+        } else {
+            try fm.moveItem(at: staging, to: destination)
+        }
     }
 }

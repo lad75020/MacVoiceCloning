@@ -72,4 +72,37 @@ struct AudioConvertingTests {
         #expect(sampleRate == 24_000)
         #expect(rms(samples) > 0.001)
     }
+
+    @Test func rejectsEmptyInput() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let source = dir.appending(path: "empty.wav")
+        let output = dir.appending(path: "converted.wav")
+        let format = try #require(AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 48_000,
+            channels: 1,
+            interleaved: false))
+        let file = try AVAudioFile(forWriting: source, settings: format.settings)
+        file.close()
+
+        await #expect(throws: AudioConverting.ConversionError.self) {
+            try await AudioConverting.convertToMono24kWAV(input: source, output: output)
+        }
+        #expect(!FileManager.default.fileExists(atPath: output.path))
+    }
+
+    @Test func committingPreparedReferenceReplacesExistingFile() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let staging = dir.appending(path: "staging.wav")
+        let destination = dir.appending(path: "reference.wav")
+        try Data("old".utf8).write(to: destination)
+        try Data("new".utf8).write(to: staging)
+
+        try SessionFiles.commitPreparedReference(at: staging, to: destination)
+
+        #expect(try Data(contentsOf: destination) == Data("new".utf8))
+        #expect(!FileManager.default.fileExists(atPath: staging.path))
+    }
 }
