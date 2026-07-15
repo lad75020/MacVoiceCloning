@@ -1,0 +1,122 @@
+analyzed_at: "2026-07-15T15:11:42Z"
+project_root: "/Volumes/WDBlack4TB/Code/MacVoiceCloning"
+total_features: 8
+completed: 1
+features:
+  - id: "application-shell-and-session"
+    name: "Application Shell and Session"
+    description: "Launches a guided five-stage local workflow and coordinates shared state, errors, and working files for each voice-cloning session."
+    files:
+      - "App/MacVoiceCloningApp.swift"
+      - "App/Model/AppModel.swift"
+      - "App/Model/PipelineState.swift"
+      - "App/Model/SessionFiles.swift"
+      - "App/Views/ContentView.swift"
+      - "App/Views/Components/StageCard.swift"
+    status: completed
+    current_phase: null
+    branch: "feature/time-machine-application-shell-and-session"
+    pushed: false
+    started_at: "2026-07-15T15:16:25Z"
+    completed_at: "2026-07-15T15:29:57Z"
+  - id: "model-download-and-loading"
+    name: "Model Download and Loading"
+    description: "Lets users resumably download, load, unload, retry, and inspect the on-device Qwen3-TTS voice model."
+    files:
+      - "App/Model/ModelManager.swift"
+      - "App/TTS/ModelDownloader.swift"
+      - "App/Views/ModelStatusView.swift"
+      - "App/Model/SessionFiles.swift"
+    status: pending
+    current_phase: null
+    branch: null
+    pushed: null
+    started_at: null
+    completed_at: null
+  - id: "reference-voice-capture"
+    name: "Reference Voice Capture"
+    description: "Records or imports a voice sample, normalizes it for cloning, shows live input feedback, and prefills an editable on-device transcript."
+    files:
+      - "App/Audio/AudioRecorder.swift"
+      - "App/Audio/AudioConverting.swift"
+      - "App/Transcription/ReferenceTranscriber.swift"
+      - "App/Views/RecordStageView.swift"
+      - "App/Views/Components/LevelMeterView.swift"
+    status: pending
+    current_phase: null
+    branch: null
+    pushed: null
+    started_at: null
+    completed_at: null
+  - id: "multilingual-text-input"
+    name: "Multilingual Text Input"
+    description: "Lets users enter the speech their clone should say and select or auto-detect one of the supported synthesis languages."
+    files:
+      - "App/TTS/TTSEngine.swift"
+      - "App/Views/TextStageView.swift"
+    status: pending
+    current_phase: null
+    branch: null
+    pushed: null
+    started_at: null
+    completed_at: null
+  - id: "voice-clone-synthesis"
+    name: "Voice Clone Synthesis"
+    description: "Generates speech locally with Qwen3-TTS and MLX from the reference voice, transcript, language, and target text while reporting progress and speed."
+    files:
+      - "App/TTS/TTSEngine.swift"
+      - "App/TTS/QwenTTSEngine.swift"
+      - "App/Views/SynthesizeStageView.swift"
+      - "App/Model/PipelineState.swift"
+      - "Tests/TTSSmokeTests.swift"
+    status: pending
+    current_phase: null
+    branch: null
+    pushed: null
+    started_at: null
+    completed_at: null
+  - id: "audio-preview-playback"
+    name: "Audio Preview Playback"
+    description: "Provides mutually exclusive playback controls with progress for reference, synthesized, and altered audio throughout the workflow."
+    files:
+      - "App/Audio/AudioPlayer.swift"
+      - "App/Views/Components/PlayerControls.swift"
+      - "App/Views/RecordStageView.swift"
+      - "App/Views/SynthesizeStageView.swift"
+      - "App/Views/AlterStageView.swift"
+    status: pending
+    current_phase: null
+    branch: null
+    pushed: null
+    started_at: null
+    completed_at: null
+  - id: "voice-alteration"
+    name: "Voice Alteration"
+    description: "Lets users reshape synthesized speech with pitch, speed, timbre, formant, engine, preset, bypass, and automatic preview controls."
+    files:
+      - "App/Alteration/RubberBandProcessor.swift"
+      - "App/Alteration/VoiceEffectParameters.swift"
+      - "App/Views/AlterStageView.swift"
+      - "App/Support/Bridging-Header.h"
+      - "Vendor/rubberband"
+      - "Tests/RubberBandProcessorTests.swift"
+    status: pending
+    current_phase: null
+    branch: null
+    pushed: null
+    started_at: null
+    completed_at: null
+  - id: "final-audio-export"
+    name: "Final Audio Export"
+    description: "Lets users save the synthesized or altered result as lossless WAV or AAC M4A and reveal the exported file in Finder."
+    files:
+      - "App/Export/AudioExporter.swift"
+      - "App/Views/ExportStageView.swift"
+      - "App/Audio/AudioConverting.swift"
+      - "App/Model/PipelineState.swift"
+    status: pending
+    current_phase: null
+    branch: null
+    pushed: null
+    started_at: null
+    completed_at: null

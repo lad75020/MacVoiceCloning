@@ -14,7 +14,11 @@ final class AppModel {
     }
 
     func onLaunch() async {
-        try? SessionFiles.prepareDirectories()
+        do {
+            try SessionFiles.prepareDirectories()
+        } catch {
+            pipeline.lastError = "Could not prepare local storage: \(error.localizedDescription)"
+        }
         modelManager.refreshOnLaunch()
         if case .downloaded = modelManager.state {
             await modelManager.load()
