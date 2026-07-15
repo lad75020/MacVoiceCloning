@@ -1,7 +1,7 @@
 analyzed_at: "2026-07-15T15:11:42Z"
 project_root: "/Volumes/WDBlack4TB/Code/MacVoiceCloning"
 total_features: 8
-completed: 1
+completed: 2
 features:
   - id: "application-shell-and-session"
     name: "Application Shell and Session"
@@ -27,12 +27,12 @@ features:
       - "App/TTS/ModelDownloader.swift"
       - "App/Views/ModelStatusView.swift"
       - "App/Model/SessionFiles.swift"
-    status: pending
+    status: completed
     current_phase: null
-    branch: null
-    pushed: null
-    started_at: null
-    completed_at: null
+    branch: "feature/time-machine-model-download-and-loading"
+    pushed: false
+    started_at: "2026-07-15T15:34:11Z"
+    completed_at: "2026-07-15T15:49:44Z"
   - id: "reference-voice-capture"
     name: "Reference Voice Capture"
     description: "Records or imports a voice sample, normalizes it for cloning, shows live input feedback, and prefills an editable on-device transcript."

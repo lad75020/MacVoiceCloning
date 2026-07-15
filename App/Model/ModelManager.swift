@@ -86,6 +86,10 @@ final class ModelManager {
     }
 
     func revealModelFolder() {
-        NSWorkspace.shared.activateFileViewerSelecting([downloader.modelDirectory])
+        let modelDirectory = downloader.modelDirectory
+        let location = FileManager.default.fileExists(atPath: modelDirectory.path)
+            ? modelDirectory
+            : SessionFiles.modelsRoot
+        NSWorkspace.shared.activateFileViewerSelecting([location])
     }
 }

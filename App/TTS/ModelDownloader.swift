@@ -38,7 +38,7 @@ nonisolated struct ModelDownloader: Sendable {
             progress(snapshotProgress.fractionCompleted)
         }
         try await ensureTokenizerJSON(in: directory)
-        FileManager.default.createFile(atPath: completionMarker.path, contents: Data())
+        try Data().write(to: completionMarker, options: .atomic)
         return directory
     }
 
