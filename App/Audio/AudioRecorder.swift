@@ -30,47 +30,8 @@ final class AudioRecorder {
         }
     }
 
-    /// Written from the realtime audio thread, read from the main actor.
-    private final class TapBox: @unchecked Sendable {
-        struct Stats {
-            var rms: Float = 0
-            var frames: Int64 = 0
-            var error: (any Error)?
-        }
-
-        let file: AVAudioFile
-        let sampleRate: Double
-        let stats = OSAllocatedUnfairLock(initialState: Stats())
-
-        init(file: AVAudioFile, sampleRate: Double) {
-            self.file = file
-            self.sampleRate = sampleRate
-        }
-
-        func ingest(_ buffer: AVAudioPCMBuffer) {
-            var writeError: (any Error)?
-            do {
-                try file.write(from: buffer)
-            } catch {
-                writeError = error
-            }
-            var rms: Float = 0
-            if let data = buffer.floatChannelData, buffer.frameLength > 0 {
-                vDSP_rmsqv(data[0], 1, &rms, vDSP_Length(buffer.frameLength))
-            }
-            let level = rms
-            let frames = Int64(buffer.frameLength)
-            let error = writeError
-            stats.withLock { s in
-                s.rms = level
-                s.frames += frames
-                if s.error == nil { s.error = error }
-            }
-        }
-    }
-
     private var engine: AVAudioEngine?
-    private var tapBox: TapBox?
+    private var tapBox: AudioRecorderTapBox?
     private var pollTask: Task<Void, Never>?
 
     func requestPermission() async -> Bool {
@@ -90,11 +51,10 @@ final class AudioRecorder {
 
         try? FileManager.default.removeItem(at: SessionFiles.rawRecording)
         let file = try AVAudioFile(forWriting: SessionFiles.rawRecording, settings: format.settings)
-        let box = TapBox(file: file, sampleRate: format.sampleRate)
+        let box = AudioRecorderTapBox(file: file, sampleRate: format.sampleRate)
+        let tapBlock = makeAudioRecorderTapBlock(for: box)
 
-        input.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
-            box.ingest(buffer)
-        }
+        input.installTap(onBus: 0, bufferSize: 4096, format: format, block: tapBlock)
         engine.prepare()
         do {
             try engine.start()
@@ -141,5 +101,52 @@ final class AudioRecorder {
         if let error = stats.error { throw error }
         guard stats.frames > 0 else { return nil }
         return (SessionFiles.rawRecording, duration)
+    }
+}
+
+private typealias AudioRecorderTapBlock = (AVAudioPCMBuffer, AVAudioTime) -> Void
+
+private func makeAudioRecorderTapBlock(for box: AudioRecorderTapBox) -> AudioRecorderTapBlock {
+    { buffer, _ in
+        box.ingest(buffer)
+    }
+}
+
+/// Written from the realtime audio thread, read from the main actor.
+private final class AudioRecorderTapBox: @unchecked Sendable {
+    struct Stats {
+        var rms: Float = 0
+        var frames: Int64 = 0
+        var error: (any Error)?
+    }
+
+    let file: AVAudioFile
+    let sampleRate: Double
+    let stats = OSAllocatedUnfairLock(initialState: Stats())
+
+    init(file: AVAudioFile, sampleRate: Double) {
+        self.file = file
+        self.sampleRate = sampleRate
+    }
+
+    func ingest(_ buffer: AVAudioPCMBuffer) {
+        var writeError: (any Error)?
+        do {
+            try file.write(from: buffer)
+        } catch {
+            writeError = error
+        }
+        var rms: Float = 0
+        if let data = buffer.floatChannelData, buffer.frameLength > 0 {
+            vDSP_rmsqv(data[0], 1, &rms, vDSP_Length(buffer.frameLength))
+        }
+        let level = rms
+        let frames = Int64(buffer.frameLength)
+        let error = writeError
+        stats.withLock { s in
+            s.rms = level
+            s.frames += frames
+            if s.error == nil { s.error = error }
+        }
     }
 }
