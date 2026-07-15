@@ -27,8 +27,22 @@ final class PipelineState {
     private(set) var isTranscribing = false
 
     // Stage 2 — text
-    var targetText: String = ""
-    var language: TTSLanguage = .english
+    var targetText: String = "" {
+        didSet {
+            guard targetText != oldValue else { return }
+            invalidateSynthesis()
+        }
+    }
+    var language: TTSLanguage = .auto {
+        didSet {
+            guard language != oldValue else { return }
+            invalidateSynthesis()
+        }
+    }
+
+    var synthesisText: String {
+        targetText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     // Stage 3 — synthesis
     private(set) var isSynthesizing = false
@@ -105,18 +119,20 @@ final class PipelineState {
 
     var hasSynthesisInputs: Bool {
         reference != nil
-            && !targetText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !synthesisText.isEmpty
             && !referenceTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     func synthesize(with engine: any TTSEngine) async {
         guard let reference, hasSynthesisInputs, !isSynthesizing else { return }
+        let text = synthesisText
+        let language = self.language
         isSynthesizing = true
         synthesisProgress = 0
         defer { isSynthesizing = false }
         do {
             let request = SynthesisRequest(
-                text: targetText,
+                text: text,
                 language: language,
                 referenceAudioURL: reference.url,
                 referenceText: referenceTranscript)

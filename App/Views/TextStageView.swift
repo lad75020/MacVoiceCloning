@@ -10,6 +10,8 @@ struct TextStageView: View {
             TextEditor(text: $pipeline.targetText)
                 .font(.body)
                 .frame(minHeight: 72)
+                .disabled(pipeline.isSynthesizing)
+                .accessibilityLabel("Text to synthesize")
                 .scrollContentBackground(.hidden)
                 .padding(8)
                 .background(
@@ -17,7 +19,7 @@ struct TextStageView: View {
                         .fill(Color(nsColor: .textBackgroundColor))
                 )
                 .overlay(alignment: .topLeading) {
-                    if pipeline.targetText.isEmpty {
+                    if pipeline.synthesisText.isEmpty {
                         Text("Type the text to synthesize in your cloned voice…")
                             .foregroundStyle(.tertiary)
                             .padding(.top, 8)
@@ -32,6 +34,7 @@ struct TextStageView: View {
                 }
             }
             .frame(maxWidth: 280)
+            .disabled(pipeline.isSynthesizing)
         }
     }
 }

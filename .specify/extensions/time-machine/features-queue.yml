@@ -1,7 +1,7 @@
 analyzed_at: "2026-07-15T15:11:42Z"
 project_root: "/Volumes/WDBlack4TB/Code/MacVoiceCloning"
 total_features: 8
-completed: 3
+completed: 4
 features:
   - id: "application-shell-and-session"
     name: "Application Shell and Session"
@@ -54,12 +54,12 @@ features:
     files:
       - "App/TTS/TTSEngine.swift"
       - "App/Views/TextStageView.swift"
-    status: pending
+    status: completed
     current_phase: null
-    branch: null
-    pushed: null
-    started_at: null
-    completed_at: null
+    branch: "feature/time-machine-multilingual-text-input"
+    pushed: false
+    started_at: "2026-07-15T16:42:01Z"
+    completed_at: "2026-07-15T16:55:01Z"
   - id: "voice-clone-synthesis"
     name: "Voice Clone Synthesis"
     description: "Generates speech locally with Qwen3-TTS and MLX from the reference voice, transcript, language, and target text while reporting progress and speed."
