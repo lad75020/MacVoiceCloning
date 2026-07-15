@@ -55,11 +55,16 @@ final class PipelineState {
     var bypassEffect = false
     private(set) var isAltering = false
     private(set) var altered: AudioClip?
+    private(set) var alteredEffect: VoiceEffectParameters?
 
     var lastError: String?
 
     /// What export (stage 5) will save.
-    var exportClip: AudioClip? { effect.isIdentity ? synthesis : (altered ?? synthesis) }
+    var exportClip: AudioClip? {
+        if effect.isIdentity { return synthesis }
+        guard !isAltering, alteredEffect == effect else { return nil }
+        return altered
+    }
 
     /// What the alter stage's preview button plays.
     var previewClip: AudioClip? {
@@ -166,6 +171,7 @@ final class PipelineState {
                 samples: result.samples, sampleRate: result.sampleRate, url: SessionFiles.synthesisWAV)
             synthesisStats = result.stats
             altered = nil
+            alteredEffect = nil
             _ = alterationRevision.advance()
             scheduleAlteration(debounced: false)
         } catch {
@@ -180,6 +186,7 @@ final class PipelineState {
         synthesis = nil
         synthesisStats = nil
         altered = nil
+        alteredEffect = nil
         isAltering = false
         synthesisProgress = 0
     }
@@ -194,6 +201,7 @@ final class PipelineState {
         guard let capturedSynthesis = synthesis else {
             alterationTask?.cancel()
             isAltering = false
+            alteredEffect = nil
             return
         }
         lastError = nil
@@ -245,6 +253,7 @@ final class PipelineState {
             guard alterationRevision.isCurrent(capturedRevision) else { return }
             altered = AudioClip(
                 samples: processed, sampleRate: synthesis.sampleRate, url: SessionFiles.alteredWAV)
+            alteredEffect = parameters
         } catch is CancellationError {
             // A newer parameter change superseded this run.
         } catch {

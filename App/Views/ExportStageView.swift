@@ -4,9 +4,11 @@ struct ExportStageView: View {
     @Environment(AppModel.self) private var model
     @State private var format: AudioExporter.Format = .wav
     @State private var exportedURL: URL?
+    @State private var isExporting = false
 
     var body: some View {
         let pipeline = model.pipeline
+        let canExport = pipeline.exportClip != nil && !isExporting
 
         StageCard(number: 5, title: "Download the final voice") {
             HStack(spacing: 12) {
@@ -16,6 +18,7 @@ struct ExportStageView: View {
                     }
                 }
                 .frame(maxWidth: 180)
+                .disabled(!canExport)
 
                 Button {
                     Task { await export() }
@@ -23,7 +26,7 @@ struct ExportStageView: View {
                     Label("Save As…", systemImage: "square.and.arrow.down")
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(pipeline.exportClip == nil)
+                .disabled(!canExport)
 
                 if let exportedURL {
                     Button {
@@ -37,23 +40,36 @@ struct ExportStageView: View {
                 Spacer()
             }
 
-            Text(pipeline.altered != nil
-                 ? "Exports the altered voice."
-                 : "Exports the synthesized voice (no alteration active).")
+            Text(exportDescription(for: pipeline))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .disabled(pipeline.exportClip == nil)
     }
 
     private func export() async {
-        guard let clip = model.pipeline.exportClip else { return }
+        guard !isExporting, let clip = model.pipeline.exportClip else { return }
+        isExporting = true
+        defer { isExporting = false }
         model.player.stop()
         do {
-            exportedURL = try await AudioExporter.export(
-                clip: clip, format: format, suggestedName: "cloned-voice")
+            let savedURL = try await AudioExporter.export(
+                clip: AudioExporter.Clip(samples: clip.samples, sampleRate: clip.sampleRate),
+                format: format,
+                suggestedName: "cloned-voice")
+            if let savedURL {
+                exportedURL = savedURL
+            }
         } catch {
             model.pipeline.lastError = error.localizedDescription
         }
+    }
+
+    private func exportDescription(for pipeline: PipelineState) -> String {
+        guard let exportClip = pipeline.exportClip else {
+            return "Export will be available when the current voice is ready."
+        }
+        return exportClip.url == SessionFiles.alteredWAV
+            ? "Exports the altered voice."
+            : "Exports the synthesized voice."
     }
 }

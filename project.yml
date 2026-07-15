@@ -59,6 +59,7 @@ targets:
       - path: App/TTS
       - path: App/Audio
       - path: App/Alteration
+      - path: App/Export
       - path: App/Model/SessionFiles.swift
       - path: Vendor/rubberband/single/RubberBandSingle.cpp
     dependencies:

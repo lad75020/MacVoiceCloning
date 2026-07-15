@@ -20,6 +20,24 @@ struct AudioConvertingTests {
         return sqrt(samples.reduce(0) { $0 + $1 * $1 } / Float(samples.count))
     }
 
+    private func clip(
+        samples: [Float]? = nil,
+        sampleRate: Int = 24_000
+    ) -> AudioExporter.Clip {
+        AudioExporter.Clip(
+            samples: samples ?? sine(frequency: 440, seconds: 0.5, sampleRate: sampleRate),
+            sampleRate: sampleRate)
+    }
+
+    private func source(_ relativePath: String) throws -> String {
+        let repositoryRoot = URL(filePath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        return try String(
+            contentsOf: repositoryRoot.appending(path: relativePath),
+            encoding: .utf8)
+    }
+
     @Test func wavRoundTripPreservesSamples() async throws {
         let dir = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -104,5 +122,89 @@ struct AudioConvertingTests {
 
         #expect(try Data(contentsOf: destination) == Data("new".utf8))
         #expect(!FileManager.default.fileExists(atPath: staging.path))
+    }
+
+    @Test func exportWriterRejectsInvalidClipsBeforeTouchingDestination() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let destination = dir.appending(path: "voice.wav")
+        let original = Data("existing audio".utf8)
+        try original.write(to: destination)
+
+        for invalidClip in [
+            clip(samples: []),
+            clip(sampleRate: 0),
+            clip(samples: [0, .nan]),
+            clip(samples: [0, .infinity]),
+        ] {
+            await #expect(throws: Error.self) {
+                try await AudioExporter.write(clip: invalidClip, format: .wav, to: destination)
+            }
+            #expect(try Data(contentsOf: destination) == original)
+        }
+    }
+
+    @Test func exportWriterPublishesWAVAtomicallyAndPreservesFidelity() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let destination = dir.appending(path: "voice.wav")
+        try Data("old".utf8).write(to: destination)
+        let input = sine(frequency: 880, seconds: 0.25, sampleRate: 24_000)
+
+        try await AudioExporter.write(
+            clip: clip(samples: input, sampleRate: 24_000),
+            format: .wav,
+            to: destination)
+
+        let (output, sampleRate) = try await AudioConverting.readMonoFloat(url: destination)
+        #expect(sampleRate == 24_000)
+        #expect(output.count == input.count)
+        #expect(zip(output, input).allSatisfy { abs($0 - $1) < 0.000001 })
+        #expect(try FileManager.default.contentsOfDirectory(atPath: dir.path).allSatisfy {
+            !$0.contains(".partial")
+        })
+    }
+
+    @Test func exportWriterPublishesReadableDurationPreservingM4A() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let destination = dir.appending(path: "voice.m4a")
+        let input = sine(frequency: 330, seconds: 1.0, sampleRate: 24_000)
+
+        try await AudioExporter.write(
+            clip: clip(samples: input, sampleRate: 24_000),
+            format: .m4a,
+            to: destination)
+
+        let (decoded, sampleRate) = try await AudioConverting.readMonoFloat(url: destination)
+        #expect(sampleRate == 24_000)
+        #expect(decoded.contains(where: { $0.isFinite && abs($0) > 0.0001 }))
+        let sourceDuration = Double(input.count) / 24_000.0
+        let decodedDuration = Double(decoded.count) / Double(sampleRate)
+        #expect(abs(decodedDuration - sourceDuration) <= sourceDuration * 0.05)
+    }
+
+    @Test func pipelineExportClipRequiresCurrentCompletedEffect() throws {
+        let pipeline = try source("App/Model/PipelineState.swift")
+
+        #expect(pipeline.contains("private(set) var alteredEffect"))
+        #expect(pipeline.contains("if effect.isIdentity { return synthesis }"))
+        #expect(pipeline.contains("guard !isAltering, alteredEffect == effect else { return nil }"))
+        #expect(pipeline.contains("alteredEffect = parameters"))
+        #expect(pipeline.contains("alteredEffect = nil"))
+        #expect(pipeline.contains("bypassEffect ? synthesis"))
+    }
+
+    @Test func exportSourceContractsKeepPanelWriterAndRevealStateSeparate() throws {
+        let exporter = try source("App/Export/AudioExporter.swift")
+        let view = try source("App/Views/ExportStageView.swift")
+
+        #expect(exporter.contains("static func write("))
+        #expect(exporter.contains("NSSavePanel"))
+        #expect(exporter.contains("return nil"))
+        #expect(view.contains("isExporting"))
+        #expect(view.contains("exportedURL = savedURL"))
+        #expect(!view.contains("exportedURL = try await AudioExporter.export"))
+        #expect(view.contains("activateFileViewerSelecting"))
     }
 }
