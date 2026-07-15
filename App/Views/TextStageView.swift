@@ -1,0 +1,37 @@
+import SwiftUI
+
+struct TextStageView: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var pipeline = model.pipeline
+
+        StageCard(number: 2, title: "Write what your clone should say") {
+            TextEditor(text: $pipeline.targetText)
+                .font(.body)
+                .frame(minHeight: 72)
+                .scrollContentBackground(.hidden)
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(nsColor: .textBackgroundColor))
+                )
+                .overlay(alignment: .topLeading) {
+                    if pipeline.targetText.isEmpty {
+                        Text("Type the text to synthesize in your cloned voice…")
+                            .foregroundStyle(.tertiary)
+                            .padding(.top, 8)
+                            .padding(.leading, 13)
+                            .allowsHitTesting(false)
+                    }
+                }
+
+            Picker("Language", selection: $pipeline.language) {
+                ForEach(TTSLanguage.allCases) { language in
+                    Text(language.displayName).tag(language)
+                }
+            }
+            .frame(maxWidth: 280)
+        }
+    }
+}
