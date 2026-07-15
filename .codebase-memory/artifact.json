@@ -1,0 +1,11 @@
+{
+    "schema_version": 1,
+    "commit": "98d835d7b8104beae430831d4a43005bd8f1fa31",
+    "indexed_at": "2026-07-15T14:43:09Z",
+    "project": "Volumes-WDBlack4TB-Code-MacVoiceCloning",
+    "nodes": 3473,
+    "edges": 8151,
+    "original_size": 7929856,
+    "compressed_size": 1631601,
+    "compression_level": 9
+}
