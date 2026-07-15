@@ -58,10 +58,13 @@ final class AudioRecorder {
             if let data = buffer.floatChannelData, buffer.frameLength > 0 {
                 vDSP_rmsqv(data[0], 1, &rms, vDSP_Length(buffer.frameLength))
             }
+            let level = rms
+            let frames = Int64(buffer.frameLength)
+            let error = writeError
             stats.withLock { s in
-                s.rms = rms
-                s.frames += Int64(buffer.frameLength)
-                if s.error == nil { s.error = writeError }
+                s.rms = level
+                s.frames += frames
+                if s.error == nil { s.error = error }
             }
         }
     }
