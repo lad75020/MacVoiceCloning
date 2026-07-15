@@ -45,6 +45,9 @@ struct RecordStageView: View {
                 .lineLimit(2...4)
                 .textFieldStyle(.roundedBorder)
                 .disabled(pipeline.isTranscribing)
+                .onChange(of: pipeline.referenceTranscript) {
+                    model.player.stop()
+                }
 
                 if pipeline.isTranscribing {
                     ProgressView().controlSize(.small)
@@ -114,6 +117,7 @@ struct RecordStageView: View {
     }
 
     private func importReference(_ url: URL) async {
+        model.player.stop()
         let scoped = url.startAccessingSecurityScopedResource()
         defer {
             if scoped { url.stopAccessingSecurityScopedResource() }

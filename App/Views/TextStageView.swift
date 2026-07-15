@@ -27,6 +27,9 @@ struct TextStageView: View {
                             .allowsHitTesting(false)
                     }
                 }
+                .onChange(of: pipeline.targetText) {
+                    model.player.stop()
+                }
 
             Picker("Language", selection: $pipeline.language) {
                 ForEach(TTSLanguage.allCases) { language in
@@ -35,6 +38,9 @@ struct TextStageView: View {
             }
             .frame(maxWidth: 280)
             .disabled(pipeline.isSynthesizing)
+            .onChange(of: pipeline.language) {
+                model.player.stop()
+            }
         }
     }
 }

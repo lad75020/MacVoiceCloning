@@ -81,7 +81,11 @@ struct AlterStageView: View {
         }
         .disabled(pipeline.synthesis == nil)
         .onChange(of: pipeline.effect) {
+            model.player.stop()
             pipeline.scheduleAlteration()
+        }
+        .onChange(of: pipeline.bypassEffect) {
+            model.player.stop()
         }
     }
 }

@@ -7,18 +7,36 @@ struct PlayerControls: View {
     let url: URL?
     var label = "Play"
 
-    private var isCurrent: Bool {
-        url != nil && model.player.currentURL == url && model.player.isPlaying
+    private var isSelected: Bool {
+        url != nil && model.player.currentURL == url
+    }
+
+    private var isPlayingCurrent: Bool {
+        isSelected && model.player.isPlaying
     }
 
     var body: some View {
         Button {
             if let url {
-                model.player.toggle(url: url)
+                do {
+                    try model.player.toggle(url: url)
+                } catch {
+                    model.pipeline.lastError = error.localizedDescription
+                }
             }
         } label: {
-            Label(isCurrent ? "Stop" : label, systemImage: isCurrent ? "stop.fill" : "play.fill")
+            Label(
+                isPlayingCurrent ? "Stop" : label,
+                systemImage: isPlayingCurrent ? "stop.fill" : "play.fill")
         }
         .disabled(url == nil)
+
+        if isSelected {
+            ProgressView(value: model.player.progress)
+                .frame(width: 72)
+                .accessibilityLabel("Playback progress")
+                .accessibilityValue(
+                    "\(Int((model.player.progress * 100).rounded())) percent")
+        }
     }
 }

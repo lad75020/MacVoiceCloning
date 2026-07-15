@@ -9,6 +9,7 @@ struct SynthesizeStageView: View {
         StageCard(number: 3, title: "Synthesize") {
             HStack(spacing: 12) {
                 Button {
+                    model.player.stop()
                     Task { await model.synthesize() }
                 } label: {
                     Label("Generate", systemImage: "waveform")
